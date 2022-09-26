@@ -124,7 +124,7 @@ void CFG_SetDefaultConfig() {
 	g_cfg.ident2 = CFG_IDENT_2;
 	g_cfg.timeRequiredToMarkBootSuccessfull = DEFAULT_BOOT_SUCCESS_TIME;
 	strcpy(g_cfg.ping_host,"192.168.0.1");
-	strcpy(g_cfg.mqtt_host, "3.6.105.29");
+	strcpy(g_cfg.mqtt_host, "52.191.32.211");
 	// g_cfg.mqtt_clientId is set as shortDeviceName below
 	strcpy(g_cfg.mqtt_userName, "twdemo");
 	strcpy(g_cfg.mqtt_pass,"demo@2018");
