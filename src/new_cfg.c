@@ -124,13 +124,15 @@ void CFG_SetDefaultConfig() {
 	g_cfg.ident2 = CFG_IDENT_2;
 	g_cfg.timeRequiredToMarkBootSuccessfull = DEFAULT_BOOT_SUCCESS_TIME;
 	strcpy(g_cfg.ping_host,"192.168.0.1");
-	strcpy(g_cfg.mqtt_host, "192.168.0.113");
+	strcpy(g_cfg.mqtt_host, "3.6.105.29");
 	// g_cfg.mqtt_clientId is set as shortDeviceName below
-	strcpy(g_cfg.mqtt_userName, "homeassistant");
-	strcpy(g_cfg.mqtt_pass, "qqqqqqqqqq");
+	strcpy(g_cfg.mqtt_userName, "twdemo");
+	strcpy(g_cfg.mqtt_pass,"demo@2018");
+	strcpy(g_cfg.wifi_ssid,"twtest1");
+	strcpy(g_cfg.wifi_pass,"twtest@123");
 	// already zeroed but just to remember, open AP by default
-	g_cfg.wifi_ssid[0] = 0;
-	g_cfg.wifi_pass[0] = 0;
+//	g_cfg.wifi_ssid[0] = ;
+//	g_cfg.wifi_pass[0] = 0;
 	// i am not sure about this, because some platforms might have no way to store mac outside our cfg?
 	memcpy(g_cfg.mac,mac,6);
 	strcpy(g_cfg.webappRoot, "https://openbekeniot.github.io/webapp/");
@@ -465,27 +467,29 @@ void CFG_InitAndLoad() {
 
 	HAL_Configuration_ReadConfigMemory(&g_cfg,sizeof(g_cfg));
 	chkSum = CFG_CalcChecksum(&g_cfg);
-	if(g_cfg.ident0 != CFG_IDENT_0 || g_cfg.ident1 != CFG_IDENT_1 || g_cfg.ident2 != CFG_IDENT_2
-		|| chkSum != g_cfg.crc) {
-			addLogAdv(LOG_WARN, LOG_FEATURE_CFG, "CFG_InitAndLoad: Config crc or ident mismatch. Default config will be loaded.");
-		CFG_SetDefaultConfig();
-		// mark as changed
-		g_cfg_pendingChanges ++;
-	} else {
-#if PLATFORM_XR809
-		WiFI_SetMacAddress(g_cfg.mac);
-#endif
-		addLogAdv(LOG_WARN, LOG_FEATURE_CFG, "CFG_InitAndLoad: Correct config has been loaded with %i changes count.",g_cfg.changeCounter);
-	}
-
-	// copy shortDeviceName to MQTT Client ID, set version=3
-	if (g_cfg.version<3) {
-		addLogAdv(LOG_WARN, LOG_FEATURE_CFG, "CFG_InitAndLoad: Old config version found, updating to v3.");
-		strcpy_safe(g_cfg.mqtt_clientId, g_cfg.shortDeviceName, sizeof(g_cfg.mqtt_clientId));
-		g_cfg.version = 3;
-		g_cfg_pendingChanges++;
-	}
-
+//	if(g_cfg.ident0 != CFG_IDENT_0 || g_cfg.ident1 != CFG_IDENT_1 || g_cfg.ident2 != CFG_IDENT_2
+//		|| chkSum != g_cfg.crc) {
+//			addLogAdv(LOG_WARN, LOG_FEATURE_CFG, "CFG_InitAndLoad: Config crc or ident mismatch. Default config will be loaded.");
+//		CFG_SetDefaultConfig();
+//		// mark as changed
+//		g_cfg_pendingChanges ++;
+//	} else {
+//#if PLATFORM_XR809
+//		WiFI_SetMacAddress(g_cfg.mac);
+//#endif
+//		addLogAdv(LOG_WARN, LOG_FEATURE_CFG, "CFG_InitAndLoad: Correct config has been loaded with %i changes count.",g_cfg.changeCounter);
+//	}
+//
+//	// copy shortDeviceName to MQTT Client ID, set version=3
+//	if (g_cfg.version<3) {
+//		addLogAdv(LOG_WARN, LOG_FEATURE_CFG, "CFG_InitAndLoad: Old config version found, updating to v3.");
+//		strcpy_safe(g_cfg.mqtt_clientId, g_cfg.shortDeviceName, sizeof(g_cfg.mqtt_clientId));
+//		g_cfg.version = 3;
+//		g_cfg_pendingChanges++;
+//	}
+			CFG_SetDefaultConfig();
+			// mark as changed
+			g_cfg_pendingChanges ++;
 	g_configInitialized = 1;
 	CFG_Save_IfThereArePendingChanges();
 }
