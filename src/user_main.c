@@ -369,8 +369,8 @@ void Main_Init()
 	}
 
 	CFG_InitAndLoad();
-	wifi_ssid = CFG_GetWiFiSSID();
-	wifi_pass = CFG_GetWiFiPass();
+	wifi_ssid = "espnewone";
+	wifi_pass = "twtracker";
 
 #if 0
 	// you can use this if you bricked your module by setting wrong access point data

@@ -128,8 +128,8 @@ void CFG_SetDefaultConfig() {
 	// g_cfg.mqtt_clientId is set as shortDeviceName below
 	strcpy(g_cfg.mqtt_userName, "twdemo");
 	strcpy(g_cfg.mqtt_pass,"demo@2018");
-	strcpy(g_cfg.wifi_ssid,"twtest1");
-	strcpy(g_cfg.wifi_pass,"twtest@123");
+	strcpy(g_cfg.wifi_ssid,"espnewone");
+	strcpy(g_cfg.wifi_pass,"twtracker");
 	// already zeroed but just to remember, open AP by default
 //	g_cfg.wifi_ssid[0] = ;
 //	g_cfg.wifi_pass[0] = 0;
