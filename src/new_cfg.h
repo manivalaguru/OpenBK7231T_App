@@ -5,7 +5,38 @@
 
 
 extern int g_cfg_pendingChanges;
+typedef struct
+{
+   bool  red_led;
+   bool green_led;
+   bool blue_led;
+   bool white_led;
+   bool led_offall;
+   uint8_t r_brightness;
+   uint8_t b_brightness;
+   uint8_t g_brightness;
+   uint8_t w_brightness;
+   uint8_t r_pin;
+   uint8_t b_pin;
+   uint8_t g_pin;
+   uint8_t w_pin;
+   uint8_t r_channel;
+   uint8_t b_channel;
+   uint8_t g_channel;
+   uint8_t w_channel;
+   // target wifi credentials
+   char blub_wifi_ssid[64];
+   char blub_wifi_pass[64];
+   char blub_device_id[64];
+   	// MQTT information for Home Assistant
+   char blub_mqtt_host[256];
+   char blub_mqtt_brokerName[64];
+   char blub_mqtt_userName[64];
+   char blub_mqtt_pass[128];
+   int blub_mqtt_port;
+   char blub_mqtt_topic[128];
 
+  } smartblub_config_data_t;
 const char *CFG_GetDeviceName();
 const char *CFG_GetShortDeviceName();
 void CFG_SetShortDeviceName(const char *s);

@@ -136,7 +136,7 @@ typedef struct mainConfig_s {
 	char wifi_pass[64];
 	// MQTT information for Home Assistant
 	char mqtt_host[256];
-	char mqtt_clientId[64];
+	char mqtt_brokerName[64];
 	char mqtt_userName[64];
 	char mqtt_pass[128];
 	int mqtt_port;
@@ -160,7 +160,26 @@ typedef struct mainConfig_s {
 	int ping_interval;
 	int ping_seconds;
 	char ping_host[64];
+	char device_id[64];
 	char initCommandLine[512];
+	bool  blub_red_led;
+    bool blub_green_led;
+    bool blub_blue_led;
+    bool blub_white_led;
+    bool blub_led_offall;
+    uint8_t blub_r_brightness;
+	uint8_t blub_b_brightness;
+	uint8_t blub_g_brightness;
+    uint8_t blub_w_brightness;
+    uint8_t blub_r_pin;
+    uint8_t blub_b_pin;
+	uint8_t blub_g_pin;
+    uint8_t blub_w_pin;
+    uint8_t blub_r_channel;
+	uint8_t blub_b_channel;
+    uint8_t blub_g_channel;
+	uint8_t blub_w_channel;
+    char mqtt_topic[128];
 } mainConfig_t;
 
 extern mainConfig_t g_cfg;

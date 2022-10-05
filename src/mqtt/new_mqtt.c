@@ -18,7 +18,7 @@
 #endif
 #endif
 
-
+extern smartblub_config_data_t smartblub_config_data;
 int wal_stricmp(const char *a, const char *b) {
   int ca, cb;
   do {
@@ -277,71 +277,71 @@ int MQTT_RemoveCallback(int ID){
   return 0;
 }
 
-// this accepts obkXXXXXX/<chan>/set to receive data to set channels
-int channelSet(mqtt_request_t* request){
-  // we only need a few bytes to receive a decimal number 0-100
-  char copy[12];
-  int len = request->receivedLen;
-  char *p = request->topic;
-  int channel = 0;
-  int iValue = 0;
-
-  addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"channelSet topic %i", request->topic);
-
-  // TODO: better
-  while(*p != '/') {
-    if(*p == 0)
-      return 0;
-    p++;
-  }
-  p++;
-  addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"channelSet part topic %s", p);
-
-  if ((*p - '0' >= 0) && (*p - '0' <= 9)){
-    channel = atoi(p);
-  } else {
-    channel = -1;
-  }
-
-  addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"channelSet channel %i", channel);
-
-  // if channel out of range, stop here.
-  if ((channel < 0) || (channel > 32)){
-    return 0;
-  }
-
-  // find something after channel - should be <base>/<chan>/set
-  while(*p != '/') {
-    if(*p == 0)
-      return 0;
-    p++;
-  }
-  p++;
-
-  // if not /set, then stop here
-  if (strcmp(p, "set")){
-    addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"channelSet NOT 'set'");
-    return 0;
-  }
-
-  if(len > sizeof(copy)-1) {
-    len = sizeof(copy)-1;
-  }
-
-  strncpy(copy, (char *)request->received, len);
-  // strncpy does not terminate??!!!!
-  copy[len] = '\0';
-
-  addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"MQTT client in mqtt_incoming_data_cb data is %s for ch %i\n", copy, channel);
-
-  iValue = atoi((char *)copy);
-  CHANNEL_Set(channel,iValue,0);
-
-  // return 1 to stop processing callbacks here.
-  // return 0 to allow later callbacks to process this topic.
-  return 1;
-}
-
+//// this accepts obkXXXXXX/<chan>/set to receive data to set channels
+//int channelSet(mqtt_request_t* request){
+//  // we only need a few bytes to receive a decimal number 0-100
+//  char copy[12];
+//  int len = request->receivedLen;
+//  char *p = request->topic;
+//  int channel = 0;
+//  int iValue = 0;
+//
+//  addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"channelSet topic %i", request->topic);
+//
+//  // TODO: better
+//  while(*p != '/') {
+//    if(*p == 0)
+//      return 0;
+//    p++;
+//  }
+//  p++;
+//  addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"channelSet part topic %s", p);
+//
+//  if ((*p - '0' >= 0) && (*p - '0' <= 9)){
+//    channel = atoi(p);
+//  } else {
+//    channel = -1;
+//  }
+//
+//  addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"channelSet channel %i", channel);
+//
+//  // if channel out of range, stop here.
+//  if ((channel < 0) || (channel > 32)){
+//    return 0;
+//  }
+//
+//  // find something after channel - should be <base>/<chan>/set
+//  while(*p != '/') {
+//    if(*p == 0)
+//      return 0;
+//    p++;
+//  }
+//  p++;
+//
+//  // if not /set, then stop here
+//  if (strcmp(p, "set")){
+//    addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"channelSet NOT 'set'");
+//    return 0;
+//  }
+//
+//  if(len > sizeof(copy)-1) {
+//    len = sizeof(copy)-1;
+//  }
+//
+//  strncpy(copy, (char *)request->received, len);
+//  // strncpy does not terminate??!!!!
+//  copy[len] = '\0';
+//
+//  addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"MQTT client in mqtt_incoming_data_cb data is %s for ch %i\n", copy, channel);
+//
+//  iValue = atoi((char *)copy);
+//  CHANNEL_Set(channel,iValue,0);
+//
+//  // return 1 to stop processing callbacks here.
+//  // return 0 to allow later callbacks to process this topic.
+//  return 1;
+//}
+//
 
 // this accepts cmnd/<clientId>/<xxx> to receive data to set channels
 int tasCmnd(mqtt_request_t* request){
@@ -393,14 +393,24 @@ static void mqtt_pub_request_cb(void *arg, err_t result)
   addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"Publish result: %d\n", result);
   }
 }
-
+//char* fun_to_get_ble_name()
+//{
+//	  uint8_t mac[6];
+//	  char ble_name[20];
+//	  wifi_get_mac_address((char *)mac, 1);
+//	  snprintf(ble_name, sizeof(ble_name), "%02x%02x", mac[4], mac[5]);
+//
+//	return ble_name;
+//}
 // This publishes value to the specified topic/channel.
 static OBK_Publish_Result MQTT_PublishTopicToClient(mqtt_client_t *client, const char *sTopic, const char *sChannel, const char *sVal, int flags, bool appendGet)
 {
   err_t err;
   u8_t qos = 2; /* 0 1 or 2, see MQTT specification */
   u8_t retain = 0; /* No don't retain such crappy payload... */
-
+const char *baseName;
+const char *ble_name;
+char pub_topic[32];
   if(client==0)
 	  return OBK_PUBLISH_WAS_DISCONNECTED;
 
@@ -431,12 +441,14 @@ static OBK_Publish_Result MQTT_PublishTopicToClient(mqtt_client_t *client, const
   }
 
   g_timeSinceLastMQTTPublish = 0;
-  
-  char *pub_topic = (char *)os_malloc(strlen(sTopic) + 1 + strlen(sChannel) + 5 + 1); //5 for /get
-  sprintf(pub_topic, "%s/%s%s", sTopic, sChannel, (appendGet == true ? "/get" : ""));
-  addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"Publishing to %s retain=%i",pub_topic, retain);
+ble_name=  fun_to_get_ble_name();
+	baseName = CFG_GetShortDeviceName();
+	sprintf(pub_topic,"%s/res/%s",baseName,ble_name);
+//  char *pub_topic = (char *)os_malloc(strlen(sTopic) + 1 + strlen(sChannel) + 5 + 1); //5 for /get
+//  sprintf(pub_topic, "%s/%s%s", sTopic, sChannel, (appendGet == true ? "/get" : ""));
+//  addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"Publishing to %s retain=%i",pub_topic, retain);
   err = mqtt_publish(client, pub_topic, sVal, strlen(sVal), qos, retain, mqtt_pub_request_cb, 0);
-  os_free(pub_topic);
+//  os_free(pub_topic);
 
   if(err != ERR_OK) {
 	 if(err == ERR_CONN) {
@@ -537,15 +549,138 @@ static void mqtt_sub_request_cb(void *arg, err_t result)
      notifying user, retry subscribe or disconnect from server */
     addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"Subscribe result: %i\n", result);
 }
+// this accepts obkXXXXXX/<chan>/set to receive data to set channels
+int channelSet(mqtt_request_t* request){
+  // we only need a few bytes to receive a decimal number 0-100
+  char copy[12];
+  int len = request->receivedLen;
+  char *p = request->topic;
+  int channel = 0;
+  char *array[80];
+	const char pub_payload[150];
+  int j=0;
+  static char mystring[500];
+  memset(mystring,'\0',sizeof(mystring));
+  char blub_data[100];
+  memcpy(mystring,request->received, len);
+ addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"mystring %s", mystring);
+ addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"request->received %s", request->received);
+ addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"request->topic %s", request->topic);
+ addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"len %d", len);
 
+
+ //otarequest(mystring);
+ if (strncmp(mystring, "{\"CONF_REQ\"}", 12) == 0) {
+
+	 snprintf(blub_data, sizeof(blub_data), "{\"RED\":%d,\"BLUE\":%d,\"GREEN\":%d,\"WHITE\":%d}",smartblub_config_data.r_brightness,smartblub_config_data.b_brightness,smartblub_config_data.g_brightness, smartblub_config_data.w_brightness);
+		 snprintf(pub_payload, sizeof(pub_payload),"{\"CONF\":%s}",blub_data);
+		       addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"calling pub: \n");
+
+		 	 MQTT_PublishMain(mqtt_client,0,pub_payload, 0, true);
+  }
+
+ else if (*mystring == '{') {
+
+	 twProcessConfig(mystring);
+	 snprintf(blub_data, sizeof(blub_data), "{\"RED\":%d,\"BLUE\":%d,\"GREEN\":%d,\"WHITE\":%d}",smartblub_config_data.r_brightness,smartblub_config_data.b_brightness,smartblub_config_data.g_brightness, smartblub_config_data.w_brightness);
+	 snprintf(pub_payload, sizeof(pub_payload),"{\"CONF\":%s}",blub_data);
+	       addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"calling pub: \n");
+	       if(smartblub_config_data.red_led==true)
+	       {
+
+	       	addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," red\n");
+	       	smartblub_config_data.red_led=false;
+	       	 CHANNEL_Set(smartblub_config_data.r_channel,smartblub_config_data.r_brightness,smartblub_config_data.r_pin);
+
+	       }
+	       if(smartblub_config_data.green_led==true)
+	       {
+	       	smartblub_config_data.green_led=false;
+	       	 CHANNEL_Set(smartblub_config_data.g_channel,smartblub_config_data.g_brightness,smartblub_config_data.g_pin);
+
+	       }
+	       if(smartblub_config_data.blue_led==true)
+	       {
+	       	smartblub_config_data.blue_led=false;
+	       	 CHANNEL_Set(smartblub_config_data.b_channel,smartblub_config_data.b_brightness,smartblub_config_data.b_pin);
+
+	       }
+	       if(smartblub_config_data.white_led==true)
+	       {
+	       	smartblub_config_data.white_led=false;
+	       	 CHANNEL_Set(smartblub_config_data.w_channel,smartblub_config_data.w_brightness,smartblub_config_data.w_pin);
+	       }
+	       if(smartblub_config_data.led_offall==true)
+	       {
+	       	smartblub_config_data.led_offall=false;
+	       	 CHANNEL_Set(smartblub_config_data.r_channel,smartblub_config_data.r_brightness,smartblub_config_data.r_pin);
+	       		 CHANNEL_Set(smartblub_config_data.b_channel,smartblub_config_data.b_brightness,smartblub_config_data.b_pin);
+	       		 CHANNEL_Set(smartblub_config_data.g_channel,smartblub_config_data.g_brightness,smartblub_config_data.g_pin);
+	       		 CHANNEL_Set(smartblub_config_data.w_channel,smartblub_config_data.w_brightness,smartblub_config_data.w_pin);
+
+	       }
+	       g_cfg_pendingChanges = 3;
+	       	 CFG_Save_IfThereArePendingChanges() ;
+	 	 MQTT_PublishMain(mqtt_client,0,pub_payload, 0, true);
+
+  }
+
+
+
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.red_led=%d", smartblub_config_data.red_led);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.green_led=%d", smartblub_config_data.green_led);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.blue_led=%d", smartblub_config_data.blue_led);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.white_led=%d", smartblub_config_data.white_led);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.led_offall=%d", smartblub_config_data.led_offall);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.r_brightness=%d", smartblub_config_data.r_brightness);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.b_brightness=%d", smartblub_config_data.b_brightness);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.g_brightness=%d", smartblub_config_data.g_brightness);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.w_brightness=%d", smartblub_config_data.w_brightness);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.r_pin=%d", smartblub_config_data.r_pin);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.b_pin=%d", smartblub_config_data.b_pin);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.g_pin=%d", smartblub_config_data.g_pin);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.w_pin=%d", smartblub_config_data.w_pin);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.r_channel=%d", smartblub_config_data.r_channel);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.b_channel=%d", smartblub_config_data.b_channel);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.g_channel=%d", smartblub_config_data.g_channel);
+addLogAdv(LOG_INFO,LOG_FEATURE_MQTT," smartblub_config_data.w_channel=%d", smartblub_config_data.w_channel);
+
+
+
+
+return 1;
+}
+
+char *function_to_get_mac()
+{
+	uint8_t mac[6];
+	char *mac_address;
+	wifi_get_mac_address((char *)mac, 1);
+	snprintf(mac_address, sizeof(mac_address), "\"%02x:%02x:%02x:%02x:%02x:%02x\"", mac[5], mac[4], mac[3], mac[2], mac[1],mac[0]);
+	return mac_address;
+
+}
 static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection_status_t status)
 {
   int i;
 	char tmp[64];
-	const char *clientId;
+	const char *mqtt_clientID;
+	const char *ble_name;
+	const char *baseName;
+	const char *mac_address;
+	const char pub_payload[150];
+	char blub_data[100];
+	int fwv=11;
   err_t err = ERR_OK;
   const struct mqtt_connect_client_info_t* client_info = (const struct mqtt_connect_client_info_t*)arg;
   LWIP_UNUSED_ARG(client);
+  const char *device_status= "\"ONLINE\"";
+  ble_name=fun_to_get_ble_name();
+  baseName = CFG_GetShortDeviceName();
+  mqtt_clientID=CFG_device_id();
+  mac_address=function_to_get_mac();
+
+  snprintf(blub_data, sizeof(blub_data), "{\"RED\":%d,\"BLUE\":%d,\"GREEN\":%d,\"WHITE\":%d}",smartblub_config_data.r_brightness,smartblub_config_data.b_brightness,smartblub_config_data.g_brightness, smartblub_config_data.w_brightness);
 
 //   addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"MQTT client < removed name > connection cb: status %d\n",  (int)status);
  //  addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"MQTT client \"%s\" connection cb: status %d\n", client_info->client_id, (int)status);
@@ -576,11 +711,15 @@ static void mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection
         }
       }
     }
+//
+//  	clientId = CFG_GetMQTTClientId();
+//
+//    sprintf(tmp,"%s/connected",clientId);
+    sprintf(tmp,"%s/res/%s",baseName,ble_name);
 
-  	clientId = CFG_GetMQTTClientId();
-
-    sprintf(tmp,"%s/connected",clientId);
-    err = mqtt_publish(client, tmp, "online", strlen("online"), 2, true, mqtt_pub_request_cb, 0);
+	  snprintf(pub_payload, sizeof(pub_payload),"{\"STATUS\":%s,\"S_NO\":\"%s\",\"FWV\":%d,\"MAC\":%s,\"CONF\":%s}",device_status,mqtt_clientID,fwv,mac_address,blub_data);
+//    err = mqtt_publish(client, tmp, "online", strlen("online"), 2, true, mqtt_pub_request_cb, 0);
+	  MQTT_PublishMain(mqtt_client,0,pub_payload, 0, true);
     if(err != ERR_OK) {
       addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"Publish err: %d\n", err);
       if(err == ERR_CONN) {
@@ -612,13 +751,22 @@ static void MQTT_do_connect(mqtt_client_t *client)
 {
   const char *mqtt_userName, *mqtt_host, *mqtt_pass, *mqtt_clientID;
   int mqtt_port;
+	const char *ble_name;
+	const char *mac_address;
+	const char pub_payload[300];
+	int fwv=11;
+  const char device_status[50]= "\"OFFLINE\"";
   int res;
   struct hostent* hostEntry;
   char will_topic[32];
+  char blub_data[100];
+  ble_name=fun_to_get_ble_name();
+  mqtt_clientID=CFG_device_id();
+  mac_address=function_to_get_mac();
 
   mqtt_userName = CFG_GetMQTTUserName();
   mqtt_pass = CFG_GetMQTTPass();
-  mqtt_clientID = CFG_GetMQTTClientId();
+//  mqtt_clientID = CFG_GetMQTTClientId();
   mqtt_host = CFG_GetMQTTHost();
 	mqtt_port = CFG_GetMQTTPort();
 
@@ -629,7 +777,10 @@ static void MQTT_do_connect(mqtt_client_t *client)
     mqtt_host,
     mqtt_port
   );
+  snprintf(blub_data, sizeof(blub_data), "{\"RED\":%d,\"BLUE\":%d,\"GREEN\":%d,\"WHITE\":%d}",smartblub_config_data.r_brightness,smartblub_config_data.b_brightness,smartblub_config_data.g_brightness, smartblub_config_data.w_brightness);
 
+  sprintf(will_topic,"%s/res/%s",CFG_GetShortDeviceName(),ble_name);
+  snprintf(pub_payload, sizeof(pub_payload),"{\"STATUS\":%s,\"S_NO\":\"%s\",\"FWV\":%d,\"MAC\":%s,\"CONF\":%s}",device_status,mqtt_clientID,fwv,mac_address,blub_data);
 
   if (!mqtt_host[0]){
     addLogAdv(LOG_INFO,LOG_FEATURE_MQTT,"mqtt_host empty, not starting mqtt\r\n");
@@ -641,9 +792,9 @@ static void MQTT_do_connect(mqtt_client_t *client)
   mqtt_client_info.client_pass = mqtt_pass;
   mqtt_client_info.client_user = mqtt_userName;
 
-	sprintf(will_topic,"%s/connected",CFG_GetMQTTClientId());
+	//sprintf(will_topic,"%s/connected",CFG_GetMQTTClientId());
   mqtt_client_info.will_topic = will_topic;
-  mqtt_client_info.will_msg = "offline";
+  mqtt_client_info.will_msg = pub_payload;
   mqtt_client_info.will_retain = true,
   mqtt_client_info.will_qos = 2,
 
@@ -756,17 +907,28 @@ void MQTT_init(){
 	char cbtopicbase[64];
 	char cbtopicsub[64];
   const char *clientId;
-	clientId = CFG_GetMQTTClientId();
-
+  const char *baseName;
+  const char *ble_name;
+  char *mqtt_topic;
+	//clientId = CFG_GetMQTTClientId();
+  mqtt_topic=CFG_mqtttopic();
+  baseName = CFG_GetShortDeviceName();
+  ble_name=fun_to_get_ble_name();
   // register the main set channel callback
-	sprintf(cbtopicbase,"%s/",clientId);
-  sprintf(cbtopicsub,"%s/+/set",clientId);
+//	sprintf(cbtopicbase,"%s/",clientId);
+//  sprintf(cbtopicsub,"%s/+/set",clientId);
+	sprintf(cbtopicbase,"%s/",baseName);
+	sprintf(cbtopicsub,"%s/config/%s/%s",baseName,mqtt_topic,ble_name);
   // note: this may REPLACE an existing entry with the same ID.  ID 1 !!!
   MQTT_RegisterCallback( cbtopicbase, cbtopicsub, 1, channelSet);
+//
+//  // register the TAS cmnd callback
+//	sprintf(cbtopicbase,"cmnd/%s/",clientId);
+//  sprintf(cbtopicsub,"cmnd/%s/+",clientId);
 
   // register the TAS cmnd callback
-	sprintf(cbtopicbase,"cmnd/%s/",clientId);
-  sprintf(cbtopicsub,"cmnd/%s/+",clientId);
+	sprintf(cbtopicbase,"cmnd/%s/",baseName);
+  sprintf(cbtopicsub,"cmnd/%s/+",baseName);
   // note: this may REPLACE an existing entry with the same ID.  ID 2 !!!
   MQTT_RegisterCallback( cbtopicbase, cbtopicsub, 2, tasCmnd);
 

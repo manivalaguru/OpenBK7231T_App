@@ -486,63 +486,129 @@ void Channel_SaveInFlashIfNeeded(int ch) {
 		HAL_FlashVars_SaveChannel(ch,g_channelValues[ch]);
 	}
 }
-static void Channel_OnChanged(int ch, int prevValue, int iFlags) {
+static void Channel_OnChanged(int ch, int iVal, int pin) {
 	int i;
-	int iVal;
+//	int iVal;
 	int bOn;
 	int bCallCb = 0;
 
+i=pin;
+HAL_PIN_PWM_Update(i,iVal);
 
-	//bOn = BIT_CHECK(g_channelStates,ch);
-	iVal = g_channelValues[ch];
-	bOn = iVal > 0;
 
-#ifndef OBK_DISABLE_ALL_DRIVERS
-	I2C_OnChannelChanged(ch,iVal);
-	DRV_OnChannelChanged(ch,iVal);
-	TuyaMCU_OnChannelChanged(ch, iVal);
-#endif
-
-	for(i = 0; i < PLATFORM_GPIO_MAX; i++) {
-		if(g_cfg.pins.channels[i] == ch) {
-			if(g_cfg.pins.roles[i] == IOR_Relay || g_cfg.pins.roles[i] == IOR_LED) {
-				RAW_SetPinValue(i,bOn);
-				bCallCb = 1;
-			}
-			else if(g_cfg.pins.roles[i] == IOR_Relay_n || g_cfg.pins.roles[i] == IOR_LED_n) {
-				RAW_SetPinValue(i,!bOn);
-				bCallCb = 1;
-			}
-			else if(g_cfg.pins.roles[i] == IOR_DigitalInput || g_cfg.pins.roles[i] == IOR_DigitalInput_n
-				|| g_cfg.pins.roles[i] == IOR_DigitalInput_NoPup || g_cfg.pins.roles[i] == IOR_DigitalInput_NoPup_n) {
-				bCallCb = 1;
-			}
-			else if(g_cfg.pins.roles[i] == IOR_ToggleChannelOnToggle) {
-				bCallCb = 1;
-			}
-			else if(g_cfg.pins.roles[i] == IOR_PWM) {
-				HAL_PIN_PWM_Update(i,iVal);
-				bCallCb = 1;
-			}
-			else if(g_cfg.pins.roles[i] == IOR_PWM_n) {
-				HAL_PIN_PWM_Update(i,100-iVal);
-				bCallCb = 1;
-			}
-		}
-	}
-	if(g_cfg.pins.channelTypes[ch] != ChType_Default) {
-		bCallCb = 1;
-	}
-	if((iFlags & CHANNEL_SET_FLAG_SKIP_MQTT) == 0) {
-		if(bCallCb) {
-			MQTT_ChannelChangeCallback(ch,iVal);
-		}
-	}
-	EventHandlers_ProcessVariableChange_Integer(CMD_EVENT_CHANGE_CHANNEL0 + ch, prevValue, iVal);
-	//addLogAdv(LOG_ERROR, LOG_FEATURE_GENERAL,"CHANNEL_OnChanged: Channel index %i startChannelValues %i\n\r",ch,g_cfg.startChannelValues[ch]);
-
-	Channel_SaveInFlashIfNeeded(ch);
 }
+void CHANNEL_Set(int ch, int iVal, int pin) {
+	int prevValue;
+	int bForce;
+	int bSilent;
+//	bForce = iFlags & CHANNEL_SET_FLAG_FORCE;
+//	bSilent = iFlags & CHANNEL_SET_FLAG_SILENT;
+//
+//	// special channels
+//	if(ch == SPECIAL_CHANNEL_LEDPOWER) {
+//		LED_SetEnableAll(iVal);
+//		return;
+//	}
+//	if(ch == SPECIAL_CHANNEL_BRIGHTNESS) {
+//		LED_SetDimmer(iVal);
+//		return;
+//	}
+//	if(ch == SPECIAL_CHANNEL_TEMPERATURE) {
+//		LED_SetTemperature(iVal,1);
+//		return;
+//	}
+//	if(ch < 0 || ch >= CHANNEL_MAX) {
+//		//if(bMustBeSilent==0) {
+//			addLogAdv(LOG_ERROR, LOG_FEATURE_GENERAL,"CHANNEL_Set: Channel index %i is out of range <0,%i)\n\r",ch,CHANNEL_MAX);
+//		//}
+//		return;
+//	}
+//	prevValue = g_channelValues[ch];
+//	if(bForce == 0) {
+//		if(prevValue == iVal) {
+//			if(bSilent==0) {
+//				addLogAdv(LOG_INFO, LOG_FEATURE_GENERAL,"No change in channel %i (still set to %i) - ignoring\n\r",ch, prevValue);
+//			}
+//			return;
+//		}
+//	}
+//	addLogAdv(LOG_INFO, LOG_FEATURE_GENERAL,"CHANNEL_Set channel %i has changed to %i (flags %i)\n\r",ch,iVal,iFlags);
+	g_channelValues[ch] = iVal;
+
+	Channel_OnChanged(ch,iVal,pin);
+}
+int PIN_GetPWMIndexForPinIndex(int pin) {
+	if(pin == 6)
+		return 0;
+	if(pin == 7)
+		return 1;
+	if(pin == 8)
+		return 2;
+	if(pin == 9)
+		return 3;
+	if(pin == 24)
+		return 4;
+	if(pin == 26)
+		return 5;
+	return -1;
+}
+//static void Channel_OnChanged(int ch, int prevValue, int iFlags) {
+//	int i;
+//	int iVal;
+//	int bOn;
+//	int bCallCb = 0;
+//
+//
+//	//bOn = BIT_CHECK(g_channelStates,ch);
+//	iVal = g_channelValues[ch];
+//	bOn = iVal > 0;
+//
+//#ifndef OBK_DISABLE_ALL_DRIVERS
+//	I2C_OnChannelChanged(ch,iVal);
+//	DRV_OnChannelChanged(ch,iVal);
+//	TuyaMCU_OnChannelChanged(ch, iVal);
+//#endif
+//
+//	for(i = 0; i < PLATFORM_GPIO_MAX; i++) {
+//		if(g_cfg.pins.channels[i] == ch) {
+//			if(g_cfg.pins.roles[i] == IOR_Relay || g_cfg.pins.roles[i] == IOR_LED) {
+//				RAW_SetPinValue(i,bOn);
+//				bCallCb = 1;
+//			}
+//			else if(g_cfg.pins.roles[i] == IOR_Relay_n || g_cfg.pins.roles[i] == IOR_LED_n) {
+//				RAW_SetPinValue(i,!bOn);
+//				bCallCb = 1;
+//			}
+//			else if(g_cfg.pins.roles[i] == IOR_DigitalInput || g_cfg.pins.roles[i] == IOR_DigitalInput_n
+//				|| g_cfg.pins.roles[i] == IOR_DigitalInput_NoPup || g_cfg.pins.roles[i] == IOR_DigitalInput_NoPup_n) {
+//				bCallCb = 1;
+//			}
+//			else if(g_cfg.pins.roles[i] == IOR_ToggleChannelOnToggle) {
+//				bCallCb = 1;
+//			}
+//			else if(g_cfg.pins.roles[i] == IOR_PWM) {
+//				HAL_PIN_PWM_Update(i,iVal);
+//				bCallCb = 1;
+//			}
+//			else if(g_cfg.pins.roles[i] == IOR_PWM_n) {
+//				HAL_PIN_PWM_Update(i,100-iVal);
+//				bCallCb = 1;
+//			}
+//		}
+//	}
+//	if(g_cfg.pins.channelTypes[ch] != ChType_Default) {
+//		bCallCb = 1;
+//	}
+//	if((iFlags & CHANNEL_SET_FLAG_SKIP_MQTT) == 0) {
+//		if(bCallCb) {
+//			MQTT_ChannelChangeCallback(ch,iVal);
+//		}
+//	}
+//	EventHandlers_ProcessVariableChange_Integer(CMD_EVENT_CHANGE_CHANNEL0 + ch, prevValue, iVal);
+//	//addLogAdv(LOG_ERROR, LOG_FEATURE_GENERAL,"CHANNEL_OnChanged: Channel index %i startChannelValues %i\n\r",ch,g_cfg.startChannelValues[ch]);
+//
+//	Channel_SaveInFlashIfNeeded(ch);
+//}
 void CFG_ApplyChannelStartValues() {
 	int i;
 	for(i = 0; i < CHANNEL_MAX; i++) {
@@ -564,48 +630,48 @@ int CHANNEL_Get(int ch) {
 	return g_channelValues[ch];
 }
 
-void CHANNEL_Set(int ch, int iVal, int iFlags) {
-	int prevValue;
-	int bForce;
-	int bSilent;
-	bForce = iFlags & CHANNEL_SET_FLAG_FORCE;
-	bSilent = iFlags & CHANNEL_SET_FLAG_SILENT;
-
-	// special channels
-	if(ch == SPECIAL_CHANNEL_LEDPOWER) {
-		LED_SetEnableAll(iVal);
-		return;
-	}
-	if(ch == SPECIAL_CHANNEL_BRIGHTNESS) {
-		LED_SetDimmer(iVal);
-		return;
-	}
-	if(ch == SPECIAL_CHANNEL_TEMPERATURE) {
-		LED_SetTemperature(iVal,1);
-		return;
-	}
-	if(ch < 0 || ch >= CHANNEL_MAX) {
-		//if(bMustBeSilent==0) {
-			addLogAdv(LOG_ERROR, LOG_FEATURE_GENERAL,"CHANNEL_Set: Channel index %i is out of range <0,%i)\n\r",ch,CHANNEL_MAX);
-		//}
-		return;
-	}
-	prevValue = g_channelValues[ch];
-	if(bForce == 0) {
-		if(prevValue == iVal) {
-			if(bSilent==0) {
-				addLogAdv(LOG_INFO, LOG_FEATURE_GENERAL,"No change in channel %i (still set to %i) - ignoring\n\r",ch, prevValue);
-			}
-			return;
-		}
-	}
-	if(bSilent==0) {
-		addLogAdv(LOG_INFO, LOG_FEATURE_GENERAL,"CHANNEL_Set channel %i has changed to %i (flags %i)\n\r",ch,iVal,iFlags);
-	}
-	g_channelValues[ch] = iVal;
-
-	Channel_OnChanged(ch,prevValue,iFlags);
-}
+//void CHANNEL_Set(int ch, int iVal, int iFlags) {
+//	int prevValue;
+//	int bForce;
+//	int bSilent;
+//	bForce = iFlags & CHANNEL_SET_FLAG_FORCE;
+//	bSilent = iFlags & CHANNEL_SET_FLAG_SILENT;
+//
+//	// special channels
+//	if(ch == SPECIAL_CHANNEL_LEDPOWER) {
+//		LED_SetEnableAll(iVal);
+//		return;
+//	}
+//	if(ch == SPECIAL_CHANNEL_BRIGHTNESS) {
+//		LED_SetDimmer(iVal);
+//		return;
+//	}
+//	if(ch == SPECIAL_CHANNEL_TEMPERATURE) {
+//		LED_SetTemperature(iVal,1);
+//		return;
+//	}
+//	if(ch < 0 || ch >= CHANNEL_MAX) {
+//		//if(bMustBeSilent==0) {
+//			addLogAdv(LOG_ERROR, LOG_FEATURE_GENERAL,"CHANNEL_Set: Channel index %i is out of range <0,%i)\n\r",ch,CHANNEL_MAX);
+//		//}
+//		return;
+//	}
+//	prevValue = g_channelValues[ch];
+//	if(bForce == 0) {
+//		if(prevValue == iVal) {
+//			if(bSilent==0) {
+//				addLogAdv(LOG_INFO, LOG_FEATURE_GENERAL,"No change in channel %i (still set to %i) - ignoring\n\r",ch, prevValue);
+//			}
+//			return;
+//		}
+//	}
+//	if(bSilent==0) {
+//		addLogAdv(LOG_INFO, LOG_FEATURE_GENERAL,"CHANNEL_Set channel %i has changed to %i (flags %i)\n\r",ch,iVal,iFlags);
+//	}
+//	g_channelValues[ch] = iVal;
+//
+//	Channel_OnChanged(ch,prevValue,iFlags);
+//}
 void CHANNEL_AddClamped(int ch, int iVal, int min, int max) {
 	int prevValue;
 	if(ch < 0 || ch >= CHANNEL_MAX) {
